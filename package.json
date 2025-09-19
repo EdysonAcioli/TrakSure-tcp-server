@@ -1,11 +1,33 @@
 {
-  "name": "trak-tcp-server",
+  "name": "traksure-tcp-server",
   "version": "1.0.0",
-  "main": "consumer.js",
+  "description": "TCP Server para comunicação com dispositivos GPS do TrakSure",
+  "main": "index.js",
   "scripts": {
-    "start": "node consumer.js"
+    "start": "node index.js",
+    "dev": "node index.js",
+    "consumer": "node consumer.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
+  "keywords": [
+    "gps",
+    "tracker",
+    "tcp",
+    "server",
+    "traksure",
+    "fleet"
+  ],
+  "author": "TrakSure Team",
+  "license": "MIT",
   "dependencies": {
-    "amqplib": "^0.10.3"
+    "amqplib": "^0.10.3",
+    "pg": "^8.11.3",
+    "dotenv": "^16.3.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "engines": {
+    "node": ">=16.0.0"
   }
 }

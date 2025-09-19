@@ -1,0 +1,52 @@
+module.exports = {
+  apps: [
+    {
+      name: "traksure-tcp-server",
+      script: "index.js",
+      instances: 1,
+      exec_mode: "fork",
+      autorestart: true,
+      watch: false,
+      max_memory_restart: "512M",
+      env: {
+        NODE_ENV: "production",
+        TCP_PORT: 5000,
+        TCP_HOST: "0.0.0.0",
+        LOG_LEVEL: "info",
+      },
+      env_development: {
+        NODE_ENV: "development",
+        TCP_PORT: 5000,
+        TCP_HOST: "0.0.0.0",
+        LOG_LEVEL: "debug",
+      },
+      error_file: "./logs/tcp-server-error.log",
+      out_file: "./logs/tcp-server-out.log",
+      log_file: "./logs/tcp-server-combined.log",
+      time: true,
+      log_date_format: "YYYY-MM-DD HH:mm:ss Z",
+    },
+    {
+      name: "traksure-consumer",
+      script: "consumer.js",
+      instances: 1,
+      exec_mode: "fork",
+      autorestart: true,
+      watch: false,
+      max_memory_restart: "256M",
+      env: {
+        NODE_ENV: "production",
+        LOG_LEVEL: "info",
+      },
+      env_development: {
+        NODE_ENV: "development",
+        LOG_LEVEL: "debug",
+      },
+      error_file: "./logs/consumer-error.log",
+      out_file: "./logs/consumer-out.log",
+      log_file: "./logs/consumer-combined.log",
+      time: true,
+      log_date_format: "YYYY-MM-DD HH:mm:ss Z",
+    },
+  ],
+};
