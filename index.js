@@ -43,7 +43,7 @@ async function startServer() {
 
     logger.info("TrakSure TCP Server started successfully");
 
-    // Log de estatísticas a cada 5 minutos
+    // Log de estatísticas a cada 1 minuto
     setInterval(async () => {
       try {
         const stats = tcpServer.getStats();
@@ -51,7 +51,7 @@ async function startServer() {
       } catch (error) {
         logger.error("Error getting server stats:", error);
       }
-    }, 300000); // 5 minutos
+    }, 60000); // 1 minuto
   } catch (error) {
     logger.error("Failed to start TCP Server:", error);
     process.exit(1);
