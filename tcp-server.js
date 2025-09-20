@@ -138,6 +138,9 @@ class TCPServer extends EventEmitter {
     deviceConnection.buffer = Buffer.concat([deviceConnection.buffer, data]);
 
     const hexData = data.toString("hex").toUpperCase();
+    const asciiData = data.toString("ascii");
+    this.logger.info(`🔍 RAW DATA HEX: ${hexData}`);
+    this.logger.info(`🔍 RAW DATA ASCII: ${asciiData}`);
     this.logger.debug(`Received data: ${hexData}`);
 
     try {
