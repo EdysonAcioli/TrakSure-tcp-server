@@ -523,16 +523,22 @@ class GPS303Parser {
       if (parts.length >= 12) {
         const imei = parts[0].split(':')[1];
         const tracker = parts[1];
-        const date = parts[2]; // YYMMDD
-        const time = parts[3]; // HHMMSS
-        const validity = parts[4]; // A=valid, V=invalid
-        const latitude = parseFloat(parts[5]) + parseFloat(parts[6])/60; // DDMM.MMMM + N/S
-        const latDirection = parts[7]; // N/S
-        const longitude = parseFloat(parts[8]) + parseFloat(parts[9])/60; // DDDMM.MMMM + E/W
+        const dateTime = parts[2]; // YYMMDDHHMMSS
+        const empty = parts[3]; // Campo vazio
+        const fix = parts[4]; // F=fix, A=valid
+        const time = parts[5]; // HHMMSS.SSS
+        const validity = parts[6]; // A=valid, V=invalid
+        const latStr = parts[7]; // DDMM.MMMM
+        const latDirection = parts[8]; // N/S
+        const lonStr = parts[9]; // DDDMM.MMMM
         const lonDirection = parts[10]; // E/W
-        const speed = parseFloat(parts[11]);
+        const speed = parts[11] ? parseFloat(parts[11]) : 0;
         
-        // Converter coordenadas para formato decimal
+        // Converter coordenadas do formato DDMM.MMMM para decimal
+        const latitude = this.parseCoordinate(latStr);
+        const longitude = this.parseCoordinate(lonStr);
+        
+        // Aplicar direção (S = negativo, W = negativo)
         const finalLat = latDirection === 'S' ? -latitude : latitude;
         const finalLon = lonDirection === 'W' ? -longitude : longitude;
 
@@ -546,7 +552,7 @@ class GPS303Parser {
             longitude: finalLon,
             speed: speed,
             validity: validity === 'A',
-            timestamp: this.parseDateTime(date, time),
+            timestamp: this.parseDateTime(dateTime, ''),
             raw: data
           },
           bytesProcessed: buffer.length,
@@ -557,16 +563,57 @@ class GPS303Parser {
     return { success: false };
   }
 
+  parseCoordinate(coordStr) {
+    try {
+      // Formato: DDMM.MMMM (latitude) ou DDDMM.MMMM (longitude)
+      const coord = parseFloat(coordStr);
+      if (isNaN(coord)) return 0;
+      
+      // Separar graus e minutos
+      const degrees = Math.floor(coord / 100);
+      const minutes = coord % 100;
+      
+      // Converter para graus decimais
+      return degrees + (minutes / 60);
+    } catch (error) {
+      console.log('⚠️ GPS303 - Error parsing coordinate:', coordStr, error.message);
+      return 0;
+    }
+  }
+
   parseDateTime(date, time) {
-    // date: YYMMDD, time: HHMMSS
-    const year = 2000 + parseInt(date.substring(0, 2));
-    const month = parseInt(date.substring(2, 4)) - 1;
-    const day = parseInt(date.substring(4, 6));
-    const hour = parseInt(time.substring(0, 2));
-    const minute = parseInt(time.substring(2, 4));
-    const second = parseInt(time.substring(4, 6));
-    
-    return new Date(year, month, day, hour, minute, second);
+    try {
+      // Se o time está vazio, extrair da string de date que contém YYMMDDHHMMSS
+      if (!time || time.trim() === '') {
+        if (date && date.length >= 12) {
+          // date: YYMMDDHHMMSS (12 dígitos)
+          const year = 2000 + parseInt(date.substring(0, 2));
+          const month = parseInt(date.substring(2, 4)) - 1;
+          const day = parseInt(date.substring(4, 6));
+          const hour = parseInt(date.substring(6, 8));
+          const minute = parseInt(date.substring(8, 10));
+          const second = parseInt(date.substring(10, 12));
+          
+          return new Date(year, month, day, hour, minute, second);
+        } else {
+          // Se não conseguir fazer parse, usar data atual
+          return new Date();
+        }
+      } else {
+        // date: YYMMDD, time: HHMMSS
+        const year = 2000 + parseInt(date.substring(0, 2));
+        const month = parseInt(date.substring(2, 4)) - 1;
+        const day = parseInt(date.substring(4, 6));
+        const hour = parseInt(time.substring(0, 2));
+        const minute = parseInt(time.substring(2, 4));
+        const second = parseInt(time.substring(4, 6));
+        
+        return new Date(year, month, day, hour, minute, second);
+      }
+    } catch (error) {
+      console.log('⚠️ GPS303 - Error parsing datetime, using current time:', error.message);
+      return new Date();
+    }
   }
 
   buildLoginResponse() {
