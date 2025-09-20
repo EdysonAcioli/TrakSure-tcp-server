@@ -74,13 +74,11 @@ class DatabaseService {
   async saveLocation(locationData) {
     const sql = `
       INSERT INTO locations (
-        device_id, latitude, longitude, speed, course, altitude,
-        recorded_at, geom, satellites, hdop, battery_level, 
-        signal_strength, raw_data
+        device_id, latitude, longitude, speed, 
+        recorded_at, geom
       ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7,
-        ST_SetSRID(ST_MakePoint($3, $2), 4326),
-        $8, $9, $10, $11, $12
+        $1, $2, $3, $4, $5,
+        ST_SetSRID(ST_MakePoint($3, $2), 4326)
       )
       RETURNING id, recorded_at
     `;
@@ -90,14 +88,7 @@ class DatabaseService {
       locationData.latitude,
       locationData.longitude,
       locationData.speed || 0,
-      locationData.course || 0,
-      locationData.altitude || 0,
       locationData.timestamp || new Date(),
-      locationData.satellites || 0,
-      locationData.hdop || 0,
-      locationData.battery_level,
-      locationData.signal_strength,
-      locationData.raw_data ? JSON.stringify(locationData.raw_data) : null,
     ];
 
     const result = await this.query(sql, params);
