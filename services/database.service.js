@@ -51,7 +51,7 @@ class DatabaseService {
    */
   async getDeviceByImei(imei) {
     const sql = `
-      SELECT id, imei, model, company_id, vehicle_id, active, created_at
+      SELECT id, imei, company_id, vehicle_id, active, created_at
       FROM devices 
       WHERE imei = $1 AND active = true
     `;
@@ -326,7 +326,7 @@ class DatabaseService {
   async getNearbyDevices(latitude, longitude, radiusKm = 10) {
     const sql = `
       SELECT 
-        d.id, d.imei, d.model,
+        d.id, d.imei,
         l.latitude, l.longitude, l.recorded_at,
         ST_Distance(
           l.geom,
