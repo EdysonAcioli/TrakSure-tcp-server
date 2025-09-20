@@ -214,6 +214,8 @@ class TCPServer extends EventEmitter {
    */
   async authenticateDevice(deviceConnection, imei) {
     try {
+      this.logger.debug(`Attempting to authenticate device with IMEI: ${imei}`);
+      
       // Verificar se dispositivo existe no banco
       const deviceRecord = await this.database.getDeviceByImei(imei);
 
@@ -222,6 +224,8 @@ class TCPServer extends EventEmitter {
         deviceConnection.socket.destroy();
         return;
       }
+
+      this.logger.debug(`Device found in database: ${JSON.stringify(deviceRecord)}`);
 
       deviceConnection.imei = imei;
       deviceConnection.authenticated = true;
@@ -236,6 +240,11 @@ class TCPServer extends EventEmitter {
       await this.sendAuthResponse(deviceConnection, true);
     } catch (error) {
       this.logger.error(`Authentication error for IMEI ${imei}:`, error);
+      this.logger.error(`Error details:`, {
+        message: error.message,
+        stack: error.stack,
+        code: error.code
+      });
       deviceConnection.socket.destroy();
     }
   }
@@ -272,14 +281,7 @@ class TCPServer extends EventEmitter {
         latitude: data.latitude,
         longitude: data.longitude,
         speed: data.speed || 0,
-        course: data.course || 0,
-        altitude: data.altitude || 0,
         timestamp: data.timestamp || new Date(),
-        satellites: data.satellites || 0,
-        hdop: data.hdop || 0,
-        battery_level: data.battery || null,
-        signal_strength: data.signal || null,
-        raw_data: data.raw || null,
       });
 
       // Publicar no RabbitMQ para processamento adicional
