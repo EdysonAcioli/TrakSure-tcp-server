@@ -57,7 +57,65 @@ class DatabaseService {
     `;
 
     const result = await this.query(sql, [imei]);
-    return result.rows[0] || null;
+    let device = result.rows[0];
+
+    // Se o dispositivo não existir, criar automaticamente
+    if (!device) {
+      console.log(`Device with IMEI ${imei} not found, creating automatically...`);
+      device = await this.createDeviceIfNotExists(imei);
+    }
+
+    return device || null;
+  }
+
+  /**
+   * Criar dispositivo automaticamente se não existir
+   */
+  async createDeviceIfNotExists(imei) {
+    try {
+      // Primeiro, garantir que existe uma empresa padrão
+      const defaultCompany = await this.getOrCreateDefaultCompany();
+      
+      // Criar dispositivo
+      const sql = `
+        INSERT INTO devices (imei, company_id, name)
+        VALUES ($1, $2, $3)
+        RETURNING id, imei, company_id, created_at
+      `;
+
+      const deviceName = `GPS-${imei.substr(-6)}`;
+      const result = await this.query(sql, [imei, defaultCompany.id, deviceName]);
+      
+      console.log(`Device created automatically: ${JSON.stringify(result.rows[0])}`);
+      return result.rows[0];
+    } catch (error) {
+      console.error(`Error creating device for IMEI ${imei}:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Obter ou criar empresa padrão
+   */
+  async getOrCreateDefaultCompany() {
+    // Verificar se existe empresa padrão
+    let sql = `SELECT id, name FROM companies WHERE name = 'Default Company' LIMIT 1`;
+    let result = await this.query(sql);
+    
+    if (result.rows.length > 0) {
+      return result.rows[0];
+    }
+
+    // Criar empresa padrão
+    sql = `
+      INSERT INTO companies (name)
+      VALUES ('Default Company')
+      RETURNING id, name
+    `;
+    
+    result = await this.query(sql);
+    console.log(`Default company created: ${JSON.stringify(result.rows[0])}`);
+    return result.rows[0];
   }
 
   /**
