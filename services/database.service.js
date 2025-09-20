@@ -51,7 +51,7 @@ class DatabaseService {
    */
   async getDeviceByImei(imei) {
     const sql = `
-      SELECT id, imei, company_id, vehicle_id, active, created_at
+      SELECT id, imei, company_id, active, created_at
       FROM devices 
       WHERE imei = $1 AND active = true
     `;
