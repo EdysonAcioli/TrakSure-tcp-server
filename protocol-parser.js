@@ -620,6 +620,10 @@ class GPS303Parser {
     return Buffer.from('LOAD', 'ascii');
   }
 
+  buildAuthResponse(success) {
+    return success ? Buffer.from('LOAD', 'ascii') : null;
+  }
+
   buildLocationAck() {
     return Buffer.from('ON', 'ascii');
   }
