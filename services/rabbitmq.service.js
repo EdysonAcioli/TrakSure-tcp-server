@@ -61,7 +61,6 @@ class RabbitMQService {
     for (const queue of queues) {
       await this.channel.assertQueue(queue, {
         durable: true, // Persistir fila após restart
-        messageTtl: 3600000, // TTL de 1 hora para mensagens
         maxLength: 10000, // Máximo de 10k mensagens na fila
       });
     }
