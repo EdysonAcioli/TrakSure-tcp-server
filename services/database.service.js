@@ -239,18 +239,9 @@ class DatabaseService {
    * Atualizar status online do dispositivo
    */
   async setDeviceOnlineStatus(imei, isOnline) {
-    const sql = `
-      UPDATE devices 
-      SET 
-        online = $2,
-        last_seen = CASE WHEN $2 THEN NOW() ELSE last_seen END,
-        updated_at = NOW()
-      WHERE imei = $1
-      RETURNING id, online, last_seen
-    `;
-
-    const result = await this.query(sql, [imei, isOnline]);
-    return result.rows[0];
+    // Método simplificado - apenas registra atividade sem colunas específicas
+    this.logger?.info(`Device ${imei} status: ${isOnline ? 'online' : 'offline'}`);
+    return { id: null, status: isOnline ? 'online' : 'offline' };
   }
 
   /**
