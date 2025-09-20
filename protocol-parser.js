@@ -6,13 +6,14 @@
 class ProtocolParser {
   constructor() {
     this.parsers = {
+      gps303: new GPS303Parser(),
       gt06: new GT06Parser(),
       tk103: new TK103Parser(),
       h02: new H02Parser(),
       generic: new GenericParser(),
     };
 
-    this.defaultParser = "generic";
+    this.defaultParser = "gps303"; // Priorizar GPS303
   }
 
   /**
@@ -488,6 +489,96 @@ class H02Parser {
 
   buildHeartbeatResponse() {
     return null;
+  }
+}
+
+/**
+ * Parser para GPS 303 (formato texto)
+ */
+class GPS303Parser {
+  parse(buffer) {
+    const data = buffer.toString('ascii');
+    console.log('🔍 GPS303 Parser - Raw data:', data);
+
+    // Verificar se é mensagem de login (começa com ##)
+    if (data.startsWith('##')) {
+      console.log('✅ GPS303 - Login message detected');
+      return {
+        success: true,
+        data: {
+          type: 'login',
+          protocol: 'gps303',
+          raw: data,
+          needsResponse: 'LOAD'
+        },
+        bytesProcessed: buffer.length,
+      };
+    }
+
+    // Verificar se é mensagem com dados de localização (começa com imei:)
+    if (data.startsWith('imei:')) {
+      console.log('✅ GPS303 - Location data detected');
+      
+      const parts = data.trim().split(',');
+      if (parts.length >= 12) {
+        const imei = parts[0].split(':')[1];
+        const tracker = parts[1];
+        const date = parts[2]; // YYMMDD
+        const time = parts[3]; // HHMMSS
+        const validity = parts[4]; // A=valid, V=invalid
+        const latitude = parseFloat(parts[5]) + parseFloat(parts[6])/60; // DDMM.MMMM + N/S
+        const latDirection = parts[7]; // N/S
+        const longitude = parseFloat(parts[8]) + parseFloat(parts[9])/60; // DDDMM.MMMM + E/W
+        const lonDirection = parts[10]; // E/W
+        const speed = parseFloat(parts[11]);
+        
+        // Converter coordenadas para formato decimal
+        const finalLat = latDirection === 'S' ? -latitude : latitude;
+        const finalLon = lonDirection === 'W' ? -longitude : longitude;
+
+        return {
+          success: true,
+          data: {
+            type: 'location',
+            protocol: 'gps303',
+            imei: imei,
+            latitude: finalLat,
+            longitude: finalLon,
+            speed: speed,
+            validity: validity === 'A',
+            timestamp: this.parseDateTime(date, time),
+            raw: data
+          },
+          bytesProcessed: buffer.length,
+        };
+      }
+    }
+
+    return { success: false };
+  }
+
+  parseDateTime(date, time) {
+    // date: YYMMDD, time: HHMMSS
+    const year = 2000 + parseInt(date.substring(0, 2));
+    const month = parseInt(date.substring(2, 4)) - 1;
+    const day = parseInt(date.substring(4, 6));
+    const hour = parseInt(time.substring(0, 2));
+    const minute = parseInt(time.substring(2, 4));
+    const second = parseInt(time.substring(4, 6));
+    
+    return new Date(year, month, day, hour, minute, second);
+  }
+
+  buildLoginResponse() {
+    return Buffer.from('LOAD', 'ascii');
+  }
+
+  buildLocationAck() {
+    return Buffer.from('ON', 'ascii');
+  }
+
+  buildHeartbeatResponse() {
+    return Buffer.from('ON', 'ascii');
   }
 }
 

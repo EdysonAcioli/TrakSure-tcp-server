@@ -164,12 +164,20 @@ class TCPServer extends EventEmitter {
 
       const parsedData = parseResult.data;
 
+      // Para GPS303, mensagem de login não tem IMEI ainda
+      if (parsedData.type === 'login' && parsedData.protocol === 'gps303') {
+        this.logger.info('🔓 GPS303 login detected, sending LOAD response');
+        const response = Buffer.from('LOAD', 'ascii');
+        deviceConnection.socket.write(response);
+        return;
+      }
+
       // Primeira mensagem deve conter IMEI para autenticação
       if (!deviceConnection.authenticated && parsedData.imei) {
         await this.authenticateDevice(deviceConnection, parsedData.imei);
       }
 
-      if (!deviceConnection.authenticated) {
+      if (!deviceConnection.authenticated && parsedData.type !== 'login') {
         this.logger.warn("Device not authenticated, dropping message");
         return;
       }
