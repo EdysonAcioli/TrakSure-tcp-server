@@ -22,9 +22,23 @@ async function run() {
 
   const ch = await conn.createChannel();
   const assertOptions = { durable: true };
-  if (QUEUE_TTL !== undefined)
-    assertOptions.arguments = { "x-message-ttl": QUEUE_TTL };
-  await ch.assertQueue(QUEUE, assertOptions);
+  if (QUEUE_TTL !== undefined) assertOptions.arguments = { "x-message-ttl": QUEUE_TTL };
+
+  // Avoid PRECONDITION-FAILED when an existing queue has different arguments
+  try {
+    await ch.checkQueue(QUEUE);
+    console.log(`Queue already exists, skipping declare: ${QUEUE}`);
+  } catch (err) {
+    const msg = String(err && err.message ? err.message : err);
+    if (msg.includes("NOT_FOUND") || msg.includes("not found") || msg.includes("404")) {
+      await ch.assertQueue(QUEUE, assertOptions);
+    } else {
+      console.warn(`Unexpected error checking queue ${QUEUE}:`, err);
+      // attempt to assert anyway; if it fails it will surface
+      await ch.assertQueue(QUEUE, assertOptions);
+    }
+  }
+
   console.log(`Listening queue: ${QUEUE} (ttl=${QUEUE_TTL || "none"})`);
 
   ch.consume(
