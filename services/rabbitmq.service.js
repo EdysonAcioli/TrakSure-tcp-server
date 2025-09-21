@@ -65,31 +65,35 @@ class RabbitMQService {
       ? Number(process.env.QUEUE_MAX_LENGTH)
       : undefined;
 
-      for (const queue of queues) {
-        const opts = { durable: true };
-        const args = {};
-        if (queueTtl !== undefined) args['x-message-ttl'] = queueTtl;
-        if (queueMaxLength !== undefined) args['x-max-length'] = queueMaxLength;
-        if (Object.keys(args).length) opts.arguments = args;
+    for (const queue of queues) {
+      const opts = { durable: true };
+      const args = {};
+      if (queueTtl !== undefined) args["x-message-ttl"] = queueTtl;
+      if (queueMaxLength !== undefined) args["x-max-length"] = queueMaxLength;
+      if (Object.keys(args).length) opts.arguments = args;
 
-        // Check if queue already exists to avoid PRECONDITION-FAILED when
-        // existing queue has different arguments (e.g., x-message-ttl)
-        try {
-          await this.channel.checkQueue(queue);
-          console.log(`Queue already exists, skipping declare: ${queue}`);
-        } catch (err) {
-          // If checkQueue throws, assume queue doesn't exist and assert it.
-          // Only rethrow for unexpected errors.
-          const msg = String(err && err.message ? err.message : err);
-          if (msg.includes('NOT_FOUND') || msg.includes('not found') || msg.includes('404')) {
-            await this.channel.assertQueue(queue, opts);
-          } else {
-            console.warn(`Unexpected error checking queue ${queue}:`, err);
-            // attempt to assert anyway; if it fails, bubble up
-            await this.channel.assertQueue(queue, opts);
-          }
+      // Check if queue already exists to avoid PRECONDITION-FAILED when
+      // existing queue has different arguments (e.g., x-message-ttl)
+      try {
+        await this.channel.checkQueue(queue);
+        console.log(`Queue already exists, skipping declare: ${queue}`);
+      } catch (err) {
+        // If checkQueue throws, assume queue doesn't exist and assert it.
+        // Only rethrow for unexpected errors.
+        const msg = String(err && err.message ? err.message : err);
+        if (
+          msg.includes("NOT_FOUND") ||
+          msg.includes("not found") ||
+          msg.includes("404")
+        ) {
+          await this.channel.assertQueue(queue, opts);
+        } else {
+          console.warn(`Unexpected error checking queue ${queue}:`, err);
+          // attempt to assert anyway; if it fails, bubble up
+          await this.channel.assertQueue(queue, opts);
         }
       }
+    }
 
     console.log("RabbitMQ queues configured:", queues);
   }
