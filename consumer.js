@@ -9,14 +9,12 @@ const QUEUE_TTL = process.env.QUEUE_TTL
   ? Number(process.env.QUEUE_TTL)
   : undefined; // milliseconds
 
-async function run() {
-  let conn;
-  try {
-    conn = await amqplib.connect(RABBITMQ_URL);
-  } catch (err) {
-    console.error("AMQP connect failed to %s:", RABBITMQ_URL, err);
-    throw err;
-  }
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function runOnce() {
+  const conn = await amqplib.connect(RABBITMQ_URL);
   conn.on("error", (err) => console.error("AMQP connection error:", err));
   conn.on("close", () => console.warn("AMQP connection closed"));
 
@@ -34,14 +32,13 @@ async function run() {
       await ch.assertQueue(QUEUE, assertOptions);
     } else {
       console.warn(`Unexpected error checking queue ${QUEUE}:`, err);
-      // attempt to assert anyway; if it fails it will surface
       await ch.assertQueue(QUEUE, assertOptions);
     }
   }
 
   console.log(`Listening queue: ${QUEUE} (ttl=${QUEUE_TTL || "none"})`);
 
-  ch.consume(
+  await ch.consume(
     QUEUE,
     async (msg) => {
       if (!msg) return;
@@ -62,7 +59,7 @@ async function run() {
       const raw = payload && (payload.rawCommand || JSON.stringify(payload));
 
       if (!host || !port) {
-        console.warn("No target host/port in payload � ack and skip", {
+        console.warn("No target host/port in payload — ack and skip", {
           id,
           device_id,
         });
@@ -116,9 +113,33 @@ async function run() {
     },
     { noAck: false }
   );
+
+  // return a promise that resolves when connection closes/errors so caller can reconnect
+  return new Promise((resolve, reject) => {
+    conn.once("close", () => resolve());
+    conn.once("error", (err) => reject(err));
+  });
 }
 
-run().catch((err) => {
-  console.error("consumer error:", err);
-  process.exit(1);
+async function start() {
+  let backoff = 1000;
+  while (true) {
+    try {
+      await runOnce();
+      // natural close, reset backoff
+      backoff = 1000;
+      console.log("AMQP connection closed, will reconnect shortly");
+    } catch (err) {
+      console.error("consumer error:", err && err.stack ? err.stack : err);
+    }
+
+    // wait before reconnecting
+    console.log(`Reconnecting to AMQP in ${backoff}ms`);
+    await delay(backoff);
+    backoff = Math.min(backoff * 2, 30000);
+  }
+}
+
+start().catch((err) => {
+  console.error("Fatal consumer error:", err);
 });
