@@ -58,11 +58,17 @@ class RabbitMQService {
       "location_updates", // Atualizações de localização
     ];
 
+    const queueTtl = process.env.QUEUE_TTL ? Number(process.env.QUEUE_TTL) : undefined;
+    const queueMaxLength = process.env.QUEUE_MAX_LENGTH ? Number(process.env.QUEUE_MAX_LENGTH) : undefined;
+
     for (const queue of queues) {
-      await this.channel.assertQueue(queue, {
-        durable: true, // Persistir fila após restart
-        maxLength: 10000, // Máximo de 10k mensagens na fila
-      });
+      const opts = { durable: true };
+      const args = {};
+      if (queueTtl !== undefined) args['x-message-ttl'] = queueTtl;
+      if (queueMaxLength !== undefined) args['x-max-length'] = queueMaxLength;
+      if (Object.keys(args).length) opts.arguments = args;
+
+      await this.channel.assertQueue(queue, opts);
     }
 
     console.log("RabbitMQ queues configured:", queues);
