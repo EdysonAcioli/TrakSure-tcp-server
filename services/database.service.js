@@ -61,7 +61,9 @@ class DatabaseService {
 
     // Se o dispositivo não existir, criar automaticamente
     if (!device) {
-      console.log(`Device with IMEI ${imei} not found, creating automatically...`);
+      console.log(
+        `Device with IMEI ${imei} not found, creating automatically...`
+      );
       device = await this.createDeviceIfNotExists(imei);
     }
 
@@ -75,7 +77,7 @@ class DatabaseService {
     try {
       // Primeiro, garantir que existe uma empresa padrão
       const defaultCompany = await this.getOrCreateDefaultCompany();
-      
+
       // Criar dispositivo
       const sql = `
         INSERT INTO devices (imei, company_id, name)
@@ -84,9 +86,15 @@ class DatabaseService {
       `;
 
       const deviceName = `GPS-${imei.substr(-6)}`;
-      const result = await this.query(sql, [imei, defaultCompany.id, deviceName]);
-      
-      console.log(`Device created automatically: ${JSON.stringify(result.rows[0])}`);
+      const result = await this.query(sql, [
+        imei,
+        defaultCompany.id,
+        deviceName,
+      ]);
+
+      console.log(
+        `Device created automatically: ${JSON.stringify(result.rows[0])}`
+      );
       return result.rows[0];
     } catch (error) {
       console.error(`Error creating device for IMEI ${imei}:`, error);
@@ -101,7 +109,7 @@ class DatabaseService {
     // Verificar se existe empresa padrão
     let sql = `SELECT id, name FROM companies WHERE name = 'Default Company' LIMIT 1`;
     let result = await this.query(sql);
-    
+
     if (result.rows.length > 0) {
       return result.rows[0];
     }
@@ -112,7 +120,7 @@ class DatabaseService {
       VALUES ('Default Company')
       RETURNING id, name
     `;
-    
+
     result = await this.query(sql);
     console.log(`Default company created: ${JSON.stringify(result.rows[0])}`);
     return result.rows[0];
@@ -289,8 +297,10 @@ class DatabaseService {
    */
   async setDeviceOnlineStatus(imei, isOnline) {
     // Método simplificado - apenas registra atividade sem colunas específicas
-    this.logger?.info(`Device ${imei} status: ${isOnline ? 'online' : 'offline'}`);
-    return { id: null, status: isOnline ? 'online' : 'offline' };
+    this.logger?.info(
+      `Device ${imei} status: ${isOnline ? "online" : "offline"}`
+    );
+    return { id: null, status: isOnline ? "online" : "offline" };
   }
 
   /**

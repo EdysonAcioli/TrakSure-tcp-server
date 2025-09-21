@@ -165,9 +165,9 @@ class TCPServer extends EventEmitter {
       const parsedData = parseResult.data;
 
       // Para GPS303, mensagem de login não tem IMEI ainda
-      if (parsedData.type === 'login' && parsedData.protocol === 'gps303') {
-        this.logger.info('🔓 GPS303 login detected, sending LOAD response');
-        const response = Buffer.from('LOAD', 'ascii');
+      if (parsedData.type === "login" && parsedData.protocol === "gps303") {
+        this.logger.info("🔓 GPS303 login detected, sending LOAD response");
+        const response = Buffer.from("LOAD", "ascii");
         deviceConnection.socket.write(response);
         return;
       }
@@ -177,7 +177,7 @@ class TCPServer extends EventEmitter {
         await this.authenticateDevice(deviceConnection, parsedData.imei);
       }
 
-      if (!deviceConnection.authenticated && parsedData.type !== 'login') {
+      if (!deviceConnection.authenticated && parsedData.type !== "login") {
         this.logger.warn("Device not authenticated, dropping message");
         return;
       }
@@ -215,7 +215,7 @@ class TCPServer extends EventEmitter {
   async authenticateDevice(deviceConnection, imei) {
     try {
       this.logger.debug(`Attempting to authenticate device with IMEI: ${imei}`);
-      
+
       // Verificar se dispositivo existe no banco
       const deviceRecord = await this.database.getDeviceByImei(imei);
 
@@ -225,7 +225,9 @@ class TCPServer extends EventEmitter {
         return;
       }
 
-      this.logger.debug(`Device found in database: ${JSON.stringify(deviceRecord)}`);
+      this.logger.debug(
+        `Device found in database: ${JSON.stringify(deviceRecord)}`
+      );
 
       deviceConnection.imei = imei;
       deviceConnection.authenticated = true;
@@ -243,7 +245,7 @@ class TCPServer extends EventEmitter {
       this.logger.error(`Error details:`, {
         message: error.message,
         stack: error.stack,
-        code: error.code
+        code: error.code,
       });
       deviceConnection.socket.destroy();
     }

@@ -56,45 +56,49 @@ async function run() {
         return;
       }
 
-        const socket = new net.Socket();
-        let sent = false;
-        const timeout = setTimeout(() => {
-          if (!sent) {
-            console.warn("Send timeout, closing socket", host, port);
-            socket.destroy();
-          }
-        }, 5000);
+      const socket = new net.Socket();
+      let sent = false;
+      const timeout = setTimeout(() => {
+        if (!sent) {
+          console.warn("Send timeout, closing socket", host, port);
+          socket.destroy();
+        }
+      }, 5000);
 
-        // resolve hostname first to avoid getaddrinfo EAI_AGAIN flooding
-        dns.lookup(host, (dnsErr, address) => {
-          if (dnsErr) {
-            console.error("DNS lookup failed for host", host, dnsErr && dnsErr.code ? dnsErr.code : dnsErr);
+      // resolve hostname first to avoid getaddrinfo EAI_AGAIN flooding
+      dns.lookup(host, (dnsErr, address) => {
+        if (dnsErr) {
+          console.error(
+            "DNS lookup failed for host",
+            host,
+            dnsErr && dnsErr.code ? dnsErr.code : dnsErr
+          );
+          ch.ack(msg);
+          clearTimeout(timeout);
+          return;
+        }
+
+        socket.connect(port, address, () => {
+          try {
+            socket.write(String(raw));
+            sent = true;
+            console.log(`Sent to ${host}:${port} ->`, raw);
             ch.ack(msg);
-            clearTimeout(timeout);
-            return;
-          }
-
-          socket.connect(port, address, () => {
-            try {
-              socket.write(String(raw));
-              sent = true;
-              console.log(`Sent to ${host}:${port} ->`, raw);
-              ch.ack(msg);
-            } catch (err) {
-              console.error("write error:", err);
-              ch.nack(msg, false, true);
-            } finally {
-              clearTimeout(timeout);
-              socket.end();
-            }
-          });
-
-          socket.on("error", (err) => {
-            console.error("socket error to %s:%s ->", host, port, err);
+          } catch (err) {
+            console.error("write error:", err);
             ch.nack(msg, false, true);
+          } finally {
             clearTimeout(timeout);
-          });
+            socket.end();
+          }
         });
+
+        socket.on("error", (err) => {
+          console.error("socket error to %s:%s ->", host, port, err);
+          ch.nack(msg, false, true);
+          clearTimeout(timeout);
+        });
+      });
     },
     { noAck: false }
   );
