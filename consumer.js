@@ -13,6 +13,28 @@ function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+async function safeAssertQueue(ch, queue, opts, attempts = 5) {
+  let backoff = 200;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      await ch.assertQueue(queue, opts);
+      return;
+    } catch (err) {
+      const msg = String(err && err.message ? err.message : err).toLowerCase();
+      // if PRECONDITION or NOT_FOUND, wait and retry — likely a race or transient channel state
+      if (msg.includes('precondition') || msg.includes('not-found') || msg.includes('not found') || msg.includes('404') || msg.includes('channel closed')) {
+        console.warn(`assertQueue attempt ${i + 1} failed for ${queue}:`, msg);
+        await delay(backoff);
+        backoff = Math.min(backoff * 2, 5000);
+        continue;
+      }
+      throw err;
+    }
+  }
+  // final attempt to bubble up error
+  await ch.assertQueue(queue, opts);
+}
+
 async function runOnce() {
   const conn = await amqplib.connect(RABBITMQ_URL);
   conn.on("error", (err) => console.error("AMQP connection error:", err));
@@ -29,15 +51,11 @@ async function runOnce() {
     console.log(`Queue already exists, skipping declare: ${QUEUE}`);
   } catch (err) {
     const msg = String(err && err.message ? err.message : err);
-    if (
-      msg.includes("NOT_FOUND") ||
-      msg.includes("not found") ||
-      msg.includes("404")
-    ) {
-      await ch.assertQueue(QUEUE, assertOptions);
+    if (msg.includes("NOT_FOUND") || msg.includes("not found") || msg.includes("404")) {
+      await safeAssertQueue(ch, QUEUE, assertOptions);
     } else {
       console.warn(`Unexpected error checking queue ${QUEUE}:`, err);
-      await ch.assertQueue(QUEUE, assertOptions);
+      await safeAssertQueue(ch, QUEUE, assertOptions);
     }
   }
 
