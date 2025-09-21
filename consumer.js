@@ -1,14 +1,20 @@
 const amqplib = require("amqplib");
 const net = require("net");
 
-const RABBITMQ_URL = process.env.RABBITMQ_URL || "amqp://traksure:traksure_pass@rabbitmq:5672";
-const QUEUE = "device_commands";
+const RABBITMQ_URL = process.env.RABBITMQ_URL || "amqp://traksure:traksure_pass@localhost:5672";
+const QUEUE = process.env.QUEUE_NAME || "device_commands";
+const QUEUE_TTL = process.env.QUEUE_TTL ? Number(process.env.QUEUE_TTL) : undefined; // milliseconds
 
 async function run() {
   const conn = await amqplib.connect(RABBITMQ_URL);
+  conn.on('error', (err) => console.error('AMQP connection error:', err));
+  conn.on('close', () => console.warn('AMQP connection closed'));
+
   const ch = await conn.createChannel();
-  await ch.assertQueue(QUEUE, { durable: true });
-  console.log("Listening queue:", QUEUE);
+  const assertOptions = { durable: true };
+  if (QUEUE_TTL !== undefined) assertOptions.arguments = { 'x-message-ttl': QUEUE_TTL };
+  await ch.assertQueue(QUEUE, assertOptions);
+  console.log(`Listening queue: ${QUEUE} (ttl=${QUEUE_TTL || 'none'})`);
 
   ch.consume(QUEUE, async (msg) => {
     if (!msg) return;
@@ -29,7 +35,7 @@ async function run() {
     const raw = payload && (payload.rawCommand || JSON.stringify(payload));
 
     if (!host || !port) {
-      console.warn("No target host/port in payload — ack and skip", { id, device_id });
+      console.warn("No target host/port in payload ï¿½ ack and skip", { id, device_id });
       ch.ack(msg);
       return;
     }
